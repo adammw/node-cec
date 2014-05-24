@@ -7,6 +7,7 @@ Persistent<Function> CECWrap::constructor;
 
 CECWrap::CECWrap(CEC::libcec_configuration *configuration) : configuration(configuration) {
   cec_adapter = static_cast<CEC::ICECAdapter*>(CECInitialise(configuration));
+  cec_adapter->InitVideoStandalone();
 }
 
 CECWrap::~CECWrap() {
