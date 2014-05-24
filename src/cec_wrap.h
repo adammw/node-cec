@@ -1,6 +1,7 @@
 #ifndef CEC_WRAP_H
 #define CEC_WRAP_H
 
+#include <string>
 #include <node.h>
 #include "cec.h"
 
@@ -14,6 +15,9 @@ class CECWrap : public node::ObjectWrap {
   CEC::ICECAdapter *cec_adapter;
   CEC::libcec_configuration *configuration;
 
+  static void OpenAsync(uv_work_t *req);
+  static void OpenAsyncAfter(uv_work_t *req);
+
   static v8::Handle<v8::Value> New(const v8::Arguments& args);
   static v8::Handle<v8::Value> Open(const v8::Arguments& args);
   static v8::Handle<v8::Value> DetectAdapters(const v8::Arguments& args);
@@ -22,5 +26,12 @@ class CECWrap : public node::ObjectWrap {
   static v8::Handle<v8::Value> GetFirmwareVersion(v8::Local<v8::String>, const v8::AccessorInfo&);
   static v8::Persistent<v8::Function> constructor;
 };
+
+typedef struct OpenAsyncData {
+  CEC::ICECAdapter *cec_adapter;
+  std::string port;
+  v8::Persistent<v8::Function> callback;
+  bool success;
+} OpenAsyncData;
 
 #endif

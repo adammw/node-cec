@@ -58,11 +58,56 @@ Handle<Value> CECWrap::Open(const Arguments& args) {
   HandleScope scope;
 
   CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(args.This());
-  if (args.Length() != 1 || !args[0]->IsString()) {
+  if (args.Length() != 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
     ThrowException(Exception::TypeError(String::New("Invalid arguments")));
     return scope.Close(Undefined());
   }
-  return scope.Close(Boolean::New(obj->cec_adapter->Open(*String::Utf8Value(args[0]))));
+
+  uv_work_t* req = new uv_work_t;
+  OpenAsyncData* data = new OpenAsyncData;
+  data->port = std::string(*String::Utf8Value(args[0]));
+  data->cec_adapter = obj->cec_adapter;
+  data->callback = Persistent<Function>::New(Local<Function>::Cast(args[1]));
+  req->data = data;
+
+  uv_queue_work(
+    uv_default_loop(),
+    req,
+    OpenAsync,
+    (uv_after_work_cb)OpenAsyncAfter);
+
+  return scope.Close(Undefined());
+}
+
+void CECWrap::OpenAsync(uv_work_t *req) {
+  OpenAsyncData *data = (OpenAsyncData *)req->data;
+  data->success = data->cec_adapter->Open(data->port.c_str());
+}
+
+void CECWrap::OpenAsyncAfter(uv_work_t *req) {
+  HandleScope scope;
+  OpenAsyncData *data = (OpenAsyncData *)req->data;
+
+  // callback arguments
+
+  Handle<Value> argv[1];
+  if (data->success) {
+    argv[0] = Null();
+  } else {
+    argv[0] = Exception::Error(String::New("libcec error"));
+  }
+
+  // execute the callback function in a try/catch for safety
+  TryCatch try_catch;
+  data->callback->Call(Context::GetCurrent()->Global(), 1, argv);
+  if (try_catch.HasCaught()) {
+    node::FatalException(try_catch);
+  }
+
+  // clean up
+  data->callback.Dispose();
+  delete data;
+  delete req;
 }
 
 Handle<Value> CECWrap::DetectAdapters(const Arguments& args) {
