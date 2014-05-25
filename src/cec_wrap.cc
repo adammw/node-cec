@@ -1,5 +1,5 @@
-#include <node.h>
 #include "cec_wrap.h"
+#include "adapter_wrap.h"
 
 using namespace v8;
 
@@ -17,7 +17,7 @@ CECWrap::~CECWrap() {
 void CECWrap::Init(Handle<Object> exports) {
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
-  tpl->SetClassName(String::NewSymbol("CECWrap"));
+  tpl->SetClassName(String::NewSymbol("CEC"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
@@ -66,7 +66,7 @@ Handle<Value> CECWrap::Open(const Arguments& args) {
   uv_work_t* req = new uv_work_t;
   OpenAsyncData* data = new OpenAsyncData;
   data->port = std::string(*String::Utf8Value(args[0]));
-  data->cec_adapter = obj->cec_adapter;
+  data->cec_adapter = static_cast<CEC::ICECAdapter*>(CECInitialise(obj->configuration));
   data->callback = Persistent<Function>::New(Local<Function>::Cast(args[1]));
   req->data = data;
 
@@ -88,18 +88,22 @@ void CECWrap::OpenAsyncAfter(uv_work_t *req) {
   HandleScope scope;
   OpenAsyncData *data = (OpenAsyncData *)req->data;
 
-  // callback arguments
+  // create adapter wrapper
+  Handle<Value> adapter = AdapterWrap::NewInstance(data->cec_adapter);
 
-  Handle<Value> argv[1];
+  // callback arguments
+  Handle<Value> argv[2];
   if (data->success) {
     argv[0] = Null();
+    argv[1] = Local<Value>::New(adapter);
   } else {
     argv[0] = Exception::Error(String::New("libcec error"));
+    argv[1] = Null();
   }
 
   // execute the callback function in a try/catch for safety
   TryCatch try_catch;
-  data->callback->Call(Context::GetCurrent()->Global(), 1, argv);
+  data->callback->Call(Context::GetCurrent()->Global(), 2, argv);
   if (try_catch.HasCaught()) {
     node::FatalException(try_catch);
   }
