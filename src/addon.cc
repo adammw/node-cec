@@ -7,6 +7,6 @@ using namespace v8;
 
 void init(Handle<Object> exports) {
   CECWrap::Init(exports);
-  AdapterWrap::Init();
+  AdapterWrap::Init(exports);
 }
 NODE_MODULE(addon, init)
