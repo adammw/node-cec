@@ -29,6 +29,7 @@ class AdapterWrap : public node::ObjectWrap {
   static v8::Handle<v8::Value> New(const v8::Arguments& args);
   static v8::Handle<v8::Value> PowerOnDevices(const v8::Arguments& args);
   static v8::Handle<v8::Value> StandbyDevices(const v8::Arguments& args);
+  static v8::Handle<v8::Value> Transmit(const v8::Arguments& args);
   static v8::Handle<v8::Value> OnNewListener(const v8::Arguments& args);
 };
 

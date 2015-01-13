@@ -56,6 +56,7 @@ void AdapterWrap::Init(Handle<Object> exports) {
   // Prototype
   tpl->PrototypeTemplate()->Set(String::NewSymbol("powerOn"), FunctionTemplate::New(PowerOnDevices)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("standby"), FunctionTemplate::New(StandbyDevices)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("transmit"), FunctionTemplate::New(Transmit)->GetFunction());
 
   // Save constructor for use in NewInstance
   constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -121,6 +122,26 @@ Handle<Value> AdapterWrap::StandbyDevices(const Arguments& args) {
     ret = obj->cec_adapter->StandbyDevices();
   }
 
+  return scope.Close(Boolean::New(ret));
+}
+
+Handle<Value> AdapterWrap::Transmit(const Arguments& args) {
+  HandleScope scope;
+
+  AdapterWrap* obj = ObjectWrap::Unwrap<AdapterWrap>(args.This());
+
+  CEC::cec_command cmd;
+  if (args.Length() != 1) {
+    ThrowException(Exception::TypeError(String::New("Invalid arguments")));
+    return scope.Close(Undefined());
+  }
+
+  cec_command_wrap* command_wrap = cec_command_wrap::Parse(args[0]);
+  if (command_wrap == NULL) {
+    return scope.Close(Undefined());
+  }
+  bool ret = obj->cec_adapter->Transmit(*command_wrap);
+  delete command_wrap;
   return scope.Close(Boolean::New(ret));
 }
 
