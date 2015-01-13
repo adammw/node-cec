@@ -1,5 +1,7 @@
+#include <node_buffer.h>
 #include "types.h"
 
+using namespace node;
 using namespace v8;
 
 cec_command_wrap* cec_command_wrap::Parse(Handle<Value> value) {
@@ -14,6 +16,7 @@ cec_command_wrap* cec_command_wrap::Parse(Handle<Value> value) {
   cec_logical_address_wrap* initiator_wrap = NULL;
   cec_logical_address_wrap* destination_wrap = NULL;
   cec_opcode_wrap* opcode_wrap = NULL;
+  cec_datapacket_wrap* parameters_wrap = NULL;
 
   initiator_wrap = cec_logical_address_wrap::Parse(obj->Get(String::New("initiator")));
   if (initiator_wrap == NULL) { 
@@ -46,6 +49,15 @@ cec_command_wrap* cec_command_wrap::Parse(Handle<Value> value) {
 
   if (obj->Has(String::New("transmit_timeout"))) {
     command_wrap->command.transmit_timeout = obj->Get(String::New("transmit_timeout"))->IntegerValue();
+  }
+
+  if (obj->Has(String::New("parameters"))) {
+    parameters_wrap = cec_datapacket_wrap::Parse(obj->Get(String::New("parameters")));
+    if (parameters_wrap == NULL) {
+      goto fail;
+    }
+    command_wrap->command.parameters = *parameters_wrap;
+    delete parameters_wrap;
   }
 
   return command_wrap;
@@ -81,3 +93,22 @@ cec_opcode_wrap* cec_opcode_wrap::Parse(Handle<Value> value) {
   return wrapper;
 };
 
+cec_datapacket_wrap* cec_datapacket_wrap::Parse(Handle<Value> value) {
+  if(!value->IsObject()) {
+    ThrowException(Exception::TypeError(String::New("Invalid argument for cec_datapacket value, must be a buffer")));
+    return NULL;
+  }
+  
+  Local<Object> bufferObj = value->ToObject();
+  size_t bufferLength = Buffer::Length(bufferObj);
+  
+  if(bufferLength > 100) {
+    ThrowException(Exception::TypeError(String::New("Invalid argument for cec_datapacket value, buffer is too large")));
+    return NULL;
+  }
+
+  cec_datapacket_wrap* wrapper = new cec_datapacket_wrap;
+  memcpy(wrapper->datapacket.data, Buffer::Data(bufferObj), bufferLength);
+  wrapper->datapacket.size = bufferLength;
+  return wrapper;
+}

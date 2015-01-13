@@ -4,9 +4,6 @@
 #include <v8.h>
 #include "cec.h"
 
-class cec_command_wrap;
-class cec_logical_address_wrap;
-
 class cec_command_wrap {
  public:
   static cec_command_wrap* Parse(v8::Handle<v8::Value> value);
@@ -38,6 +35,17 @@ class cec_opcode_wrap {
   }
  private:
   CEC::cec_opcode opcode;
+};
+
+class cec_datapacket_wrap {
+ public:
+  static cec_datapacket_wrap* Parse(v8::Handle<v8::Value> value);
+
+  operator CEC::cec_datapacket() const {
+    return datapacket;
+  }
+ private:
+  CEC::cec_datapacket datapacket;
 };
 
 #endif
