@@ -22,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/adammw/node-cec/issues"
   },
-  "homepage": "https://github.com/adammw/node-cec"
+  "homepage": "https://github.com/adammw/node-cec",
+  "devDependencies": {
+    "debug": "^2.1.1"
+  }
 }
