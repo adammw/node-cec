@@ -1,4 +1,5 @@
 #include "adapter_wrap.h"
+#include "types.h"
 
 using namespace v8;
 
