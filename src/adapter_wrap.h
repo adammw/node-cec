@@ -32,6 +32,7 @@ class AdapterWrap : public node::ObjectWrap {
   static v8::Handle<v8::Value> Transmit(const v8::Arguments& args);
   static v8::Handle<v8::Value> OnNewListener(const v8::Arguments& args);
   static v8::Handle<v8::Value> GetDevicePowerStatus(const v8::Arguments& args);
+  static v8::Handle<v8::Value> SetHDMIPort(const v8::Arguments& args);
 };
 
 typedef struct UvAsyncData {

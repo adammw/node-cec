@@ -22,6 +22,11 @@ var ret = cec.open(adapters[0].portName, function(err, adapter) {
     var ret = adapter.getPowerState();
     console.log(ret);
   }, 1000);
+  setTimeout(function() {
+    console.log('set hdmi port...');
+    var ret = adapter.setHDMIPort(1);
+    console.log(ret);
+  }, 1000);
   //setTimeout(function() {
   //  console.log('powering on...');
   //  adapter.powerOn();

@@ -58,6 +58,7 @@ void AdapterWrap::Init(Handle<Object> exports) {
   tpl->PrototypeTemplate()->Set(String::NewSymbol("standby"), FunctionTemplate::New(StandbyDevices)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("transmit"), FunctionTemplate::New(Transmit)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("getPowerState"), FunctionTemplate::New(GetDevicePowerStatus)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("setHDMIPort"), FunctionTemplate::New(SetHDMIPort)->GetFunction());
 
   // Save constructor for use in NewInstance
   constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -191,5 +192,19 @@ Handle<Value> AdapterWrap::GetDevicePowerStatus(const Arguments& args) {
     if(ret == CEC::CEC_POWER_STATUS_ON) turnedOn = true;
     
     return scope.Close(Boolean::New(turnedOn));
+}
+
+Handle<Value> AdapterWrap::SetHDMIPort(const Arguments& args) {
+    HandleScope scope;
+    
+    AdapterWrap* obj = ObjectWrap::Unwrap<AdapterWrap>(args.This());
+    bool ret = false;
+    if (args.Length() > 1 && args[0]->IsNumber() && args[1]->IsNumber()) {
+        ret = obj->cec_adapter->SetHDMIPort((CEC::cec_logical_address) args[0]->IntegerValue(),(uint8_t) args[1]->IntegerValue());
+    }
+    else if(args.Length() > 0 && args[0]->IsNumber()) {
+        ret = obj->cec_adapter->SetHDMIPort(CEC::CECDEVICE_TV,(uint8_t) args[0]->IntegerValue());
+    }
+    return scope.Close(Boolean::New(ret));
 }
 
