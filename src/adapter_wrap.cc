@@ -57,6 +57,7 @@ void AdapterWrap::Init(Handle<Object> exports) {
   tpl->PrototypeTemplate()->Set(String::NewSymbol("powerOn"), FunctionTemplate::New(PowerOnDevices)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("standby"), FunctionTemplate::New(StandbyDevices)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("transmit"), FunctionTemplate::New(Transmit)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("getPowerState"), FunctionTemplate::New(GetDevicePowerStatus)->GetFunction());
 
   // Save constructor for use in NewInstance
   constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -174,3 +175,21 @@ int AdapterWrap::ListenerCount(Handle<Object> argThis, const char *eventName) {
 
   return listenersArr->Length();
 }
+
+Handle<Value> AdapterWrap::GetDevicePowerStatus(const Arguments& args) {
+    HandleScope scope;
+    
+    AdapterWrap* obj = ObjectWrap::Unwrap<AdapterWrap>(args.This());
+    CEC::cec_power_status ret;
+    if (args.Length() && args[0]->IsNumber()) {
+        ret = obj->cec_adapter->GetDevicePowerStatus((CEC::cec_logical_address) args[0]->IntegerValue());
+    } else {
+        ret = obj->cec_adapter->GetDevicePowerStatus(CEC::CECDEVICE_TV);
+    }
+    
+    bool turnedOn = false;
+    if(ret == CEC::CEC_POWER_STATUS_ON) turnedOn = true;
+    
+    return scope.Close(Boolean::New(turnedOn));
+}
+
