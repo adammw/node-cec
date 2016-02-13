@@ -23,6 +23,7 @@ class AdapterWrap : public node::ObjectWrap {
   // Methods
   static void OnUvAsync(uv_async_t *req, int status);
   static int OnCecLogMessage(void *data, const CEC::cec_log_message message);
+  static int OnCecCommandMessage(void *data, const CEC::cec_command command);
   static int ListenerCount(v8::Handle<v8::Object> argThis, const char *eventName);
   static bool EmitEvent(v8::Handle<v8::Object> argThis, const unsigned int argc, v8::Handle<v8::Value> argv[]);
 
@@ -39,6 +40,7 @@ typedef struct UvAsyncData {
   uv_mutex_t mutex;
   v8::Persistent<v8::Object> argThis;
   std::queue<CEC::cec_log_message> logQueue;
+  std::queue<CEC::cec_command> commandQueue;
 } UvAsyncData;
 
 #endif

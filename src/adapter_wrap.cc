@@ -29,6 +29,16 @@ int AdapterWrap::OnCecLogMessage(void *data, const CEC::cec_log_message message)
   return 1;
 }
 
+int AdapterWrap::OnCecCommandMessage(void *data, const CEC::cec_command command) {
+    uv_async_t* async = static_cast<uv_async_t*>(data);
+    UvAsyncData* asyncData = static_cast<UvAsyncData*>(async->data);
+    uv_mutex_lock(&asyncData->mutex);
+    asyncData->commandQueue.push(command);
+    uv_mutex_unlock(&asyncData->mutex);
+    uv_async_send(async);
+    return 1;
+}
+
 void AdapterWrap::OnUvAsync(uv_async_t *req, int status) {
   UvAsyncData* asyncData = static_cast<UvAsyncData*>(req->data);
   uv_mutex_lock(&asyncData->mutex);
@@ -44,6 +54,23 @@ void AdapterWrap::OnUvAsync(uv_async_t *req, int status) {
     EmitEvent(asyncData->argThis, argc, argv);
     asyncData->logQueue.pop();
   }
+  while(!asyncData->commandQueue.empty()) {
+        CEC::cec_command command = asyncData->commandQueue.front();
+        
+        const unsigned argc = 2;
+        Local<Object> data = Object::New();
+        data->Set(String::NewSymbol("initiator"), Number::New(command.initiator));
+        data->Set(String::NewSymbol("destination"), Number::New(command.destination));
+        data->Set(String::NewSymbol("opcode"), Number::New(command.opcode));
+        data->Set(String::NewSymbol("parameter000"), Number::New(command.parameters.data[0]));
+        data->Set(String::NewSymbol("parameter001"), Number::New(command.parameters.data[1]));
+        data->Set(String::NewSymbol("parameter002"), Number::New(command.parameters.data[2]));
+        data->Set(String::NewSymbol("parameter003"), Number::New(command.parameters.data[3]));
+        data->Set(String::NewSymbol("parameter004"), Number::New(command.parameters.data[4]));
+        Local<Value> argv[argc] = { Local<Value>::New(String::New("command")), data };
+        EmitEvent(asyncData->argThis, argc, argv);
+        asyncData->commandQueue.pop();
+    }
   uv_mutex_unlock(&asyncData->mutex);
 }
 
@@ -95,6 +122,16 @@ Handle<Value> AdapterWrap::OnNewListener(const Arguments& args) {
     obj->cec_callbacks.CBCecLogMessage = &OnCecLogMessage;
     obj->cec_adapter->EnableCallbacks((void *) obj->async_handle, &(obj->cec_callbacks));
   }
+  if (args[0]->Equals(String::New("command")) && obj->cec_callbacks.CBCecCommand == NULL) {
+        UvAsyncData* asyncData = new UvAsyncData;
+        asyncData->argThis = Persistent<Object>::New(args.This());
+        uv_mutex_init(&asyncData->mutex);
+        obj->async_handle = new uv_async_t;
+        obj->async_handle->data = (void *) asyncData;
+        uv_async_init(uv_default_loop(), obj->async_handle, OnUvAsync);
+        obj->cec_callbacks.CBCecCommand = &OnCecCommandMessage;
+        obj->cec_adapter->EnableCallbacks((void *) obj->async_handle, &(obj->cec_callbacks));
+    }
 
   return scope.Close(Undefined());
 }
