@@ -4,8 +4,9 @@
 #include <string>
 #include <node.h>
 #include "cec.h"
+#include <nan.h>
 
-class CECWrap : public node::ObjectWrap {
+class CECWrap : public Nan::ObjectWrap {
  public:
   CECWrap(CEC::libcec_configuration *configuration);
   ~CECWrap();
