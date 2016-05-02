@@ -5,6 +5,7 @@
 #include <node.h>
 #include "cec.h"
 #include <nan.h>
+#include <v8.h>
 
 class CECWrap : public Nan::ObjectWrap {
  public:
