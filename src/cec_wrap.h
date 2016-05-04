@@ -23,9 +23,9 @@ class CECWrap : public Nan::ObjectWrap {
   static void OpenAsyncAfter(uv_work_t *req);
 
   // Methods
-  static v8::Handle<v8::Value> New(const v8::Arguments& args);
-  static v8::Handle<v8::Value> Open(const v8::Arguments& args);
-  static v8::Handle<v8::Value> DetectAdapters(const v8::Arguments& args);
+  static v8::Handle<v8::Value> New(const Nan::FunctionCallbackInfo<v8::Value> &args);
+  static v8::Handle<v8::Value> Open(const Nan::FunctionCallbackInfo<v8::Value> &args);
+  static v8::Handle<v8::Value> DetectAdapters(const Nan::FunctionCallbackInfo<v8::Value> &args);
 
   // Accessors
   static v8::Handle<v8::Value> GetClientVersion(v8::Local<v8::String>, const v8::AccessorInfo&);

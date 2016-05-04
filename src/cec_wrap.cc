@@ -15,14 +15,18 @@ CECWrap::~CECWrap() {
 }
 
 void CECWrap::Init(Handle<Object> exports) {
+    
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
+  //Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
+    Local<FunctionTemplate> tpl  = FunctionTemplate::New();
   tpl->SetClassName(String::NewSymbol("CEC"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("open"), FunctionTemplate::New(Open)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("detectAdapters"), FunctionTemplate::New(DetectAdapters)->GetFunction());
+  //tpl->PrototypeTemplate()->Set(String::NewSymbol("open"), FunctionTemplate::New(Open)->GetFunction());
+    tpl->PrototypeTemplate()->Set(String::NewSymbol("open"), FunctionTemplate::New()->GetFunction());
+  //tpl->PrototypeTemplate()->Set(String::NewSymbol("detectAdapters"), FunctionTemplate::New(DetectAdapters)->GetFunction());
+    tpl->PrototypeTemplate()->Set(String::NewSymbol("detectAdapters"), FunctionTemplate::New()->GetFunction());
   tpl->PrototypeTemplate()->SetAccessor(String::NewSymbol("clientVersion"), GetClientVersion);
   tpl->PrototypeTemplate()->SetAccessor(String::NewSymbol("serverVersion"), GetServerVersion);
   tpl->PrototypeTemplate()->SetAccessor(String::NewSymbol("firmwareVersion"), GetFirmwareVersion);
@@ -32,7 +36,7 @@ void CECWrap::Init(Handle<Object> exports) {
   exports->Set(String::NewSymbol("CEC"), constructor);
 }
 
-Handle<Value> CECWrap::New(const Arguments& args) {
+Handle<Value> CECWrap::New(const Nan::FunctionCallbackInfo<v8::Value> &args) {
   HandleScope scope;
 
   if (args.IsConstructCall()) {
@@ -54,7 +58,7 @@ Handle<Value> CECWrap::New(const Arguments& args) {
   }
 }
 
-Handle<Value> CECWrap::Open(const Arguments& args) {
+Handle<Value> CECWrap::Open(const Nan::FunctionCallbackInfo<v8::Value> &args) {
   HandleScope scope;
 
   CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(args.This());
@@ -114,7 +118,7 @@ void CECWrap::OpenAsyncAfter(uv_work_t *req) {
   delete req;
 }
 
-Handle<Value> CECWrap::DetectAdapters(const Arguments& args) {
+Handle<Value> CECWrap::DetectAdapters(const Nan::FunctionCallbackInfo<v8::Value> &args) {
   HandleScope scope;
 
   CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(args.This());
