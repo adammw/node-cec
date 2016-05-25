@@ -14,16 +14,26 @@ var ret = cec.open(adapters[0].portName, function(err, adapter) {
     initiator: CEC.LogicalAddress.TUNER1,
     destination: CEC.LogicalAddress.TV
   });
-  adapter.on('logmessage', function(data) {
-    debug(data.message);
-  });
+  //adapter.on('logmessage', function(data) {
+  //  debug(data.message);
+  //});
   setTimeout(function() {
-    console.log('powering on...');
-    adapter.powerOn();
+    console.log('getting powerstate...');
+    var ret = adapter.getPowerState();
+    console.log(ret);
   }, 1000);
   setTimeout(function() {
-    console.log('powering off...');
-    adapter.standby();
-    process.exit(0);
-  }, 5000);
+    console.log('set hdmi port...');
+    var ret = adapter.setHDMIPort(1);
+    console.log(ret);
+  }, 1000);
+  //setTimeout(function() {
+  //  console.log('powering on...');
+  //  adapter.powerOn();
+  //}, 1000);
+  //setTimeout(function() {
+  //  console.log('powering off...');
+  //  adapter.standby();
+  //  process.exit(0);
+  //}, 5000);
 });

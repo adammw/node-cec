@@ -3,7 +3,7 @@
 
 using namespace v8;
 
-Persistent<Function> CECWrap::constructor;
+Nan::Persistent<Function> CECWrap::constructor;
 
 CECWrap::CECWrap(CEC::libcec_configuration *configuration) : configuration(configuration) {
   cec_adapter = static_cast<CEC::ICECAdapter*>(CECInitialise(configuration));
@@ -14,25 +14,28 @@ CECWrap::~CECWrap() {
   CECDestroy(cec_adapter);
 }
 
-void CECWrap::Init(Handle<Object> exports) {
-  // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
-  tpl->SetClassName(String::NewSymbol("CEC"));
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
+NAN_MODULE_INIT(CECWrap::Init) {
+    // Prepare constructor template
+    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>();
+    tpl->SetClassName(Nan::New("CEC").ToLocalChecked());
+    tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  // Prototype
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("open"), FunctionTemplate::New(Open)->GetFunction());
-  tpl->PrototypeTemplate()->Set(String::NewSymbol("detectAdapters"), FunctionTemplate::New(DetectAdapters)->GetFunction());
-  tpl->PrototypeTemplate()->SetAccessor(String::NewSymbol("clientVersion"), GetClientVersion);
-  tpl->PrototypeTemplate()->SetAccessor(String::NewSymbol("serverVersion"), GetServerVersion);
-  tpl->PrototypeTemplate()->SetAccessor(String::NewSymbol("firmwareVersion"), GetFirmwareVersion);
+    // Prototype
+    Nan::SetPrototypeMethod(tpl, "open", Open);
+    Nan::SetPrototypeMethod(tpl, "detectAdapters", DetectAdapters);
 
-  // Export constructor
-  constructor = Persistent<Function>::New(tpl->GetFunction());
-  exports->Set(String::NewSymbol("CEC"), constructor);
+    Nan::SetAccessor(tpl->InstanceTemplate(), Nan::New("clientVersion").ToLocalChecked(), GetClientVersion);
+    Nan::SetAccessor(tpl->InstanceTemplate(), Nan::New("serverVersion").ToLocalChecked(), GetServerVersion);
+    Nan::SetAccessor(tpl->InstanceTemplate(), Nan::New("firmwareVersion").ToLocalChecked(), GetFirmwareVersion);
+    // Export constructor
+    //constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+    //exports->Set(String::NewSymbol("CEC"), constructor);
+//    +    Nan::Set(target, Nan::New("Tag").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+//    +    Nan::SetMethod(target, "tag", AsyncTag);
+//    +    Nan::SetMethod(target, "tagSync", SyncTag);
 }
-
-Handle<Value> CECWrap::New(const Arguments& args) {
+/*
+v8::Handle<v8::Value> CECWrap::New(const Nan::FunctionCallbackInfo<v8::Value> &args) {
   HandleScope scope;
 
   if (args.IsConstructCall()) {
@@ -53,30 +56,63 @@ Handle<Value> CECWrap::New(const Arguments& args) {
     return scope.Close(constructor->NewInstance(argc, argv));
   }
 }
+*/
+NAN_METHOD(CECWrap::New) {
+    
+    HandleScope scope;
+    
+    if (info.IsConstructCall()) {
+        // Invoked as constructor: `new MyObject(...)`
+        
+        // Create configuration
+        CEC::libcec_configuration *configuration = new CEC::libcec_configuration;
+        configuration->deviceTypes.Add(CEC::CEC_DEVICE_TYPE_RECORDING_DEVICE);
+        
+        // Create wrapper
+        CECWrap* obj = new CECWrap(configuration);
+        obj->Wrap(info.This());
+        
+        //info.GetReturnValue(); return info.This();
+        
+        info.GetReturnValue().Set(info.This());
+        
+        return;
+    } else {
+        // Invoked as plain function `MyObject(...)`, turn into construct call.
+        const int argc = 1;
+        Local<Value> argv[argc] = { info[0] };
+        
+        //  scope.Close(constructor->NewInstance(argc, argv));
+        Local<Object> inst = Nan::NewInstance(Nan::New(constructor)).ToLocalChecked();
+        
+        info.GetReturnValue().Set(inst);
+        
+        return;
+    }
+}
 
-Handle<Value> CECWrap::Open(const Arguments& args) {
-  HandleScope scope;
+NAN_METHOD(CECWrap::Open) {
+    
+    CECWrap* obj = Nan::ObjectWrap::Unwrap<CECWrap>(info.This());
+    if (info.Length() != 2 || !info[0]->IsString() || !info[1]->IsFunction()) {
+        Nan::ThrowError(Exception::TypeError(String::New("Invalid arguments")));
+        return;
+    }
+    
+    uv_work_t* req = new uv_work_t;
+    OpenAsyncData* data = new OpenAsyncData;
+    data->port = std::string(*String::Utf8Value(info[0]));
+    data->cec_adapter = static_cast<CEC::ICECAdapter*>(CECInitialise(obj->configuration));
+    data->callback = Persistent<Function>::New(Local<Function>::Cast(info[1]));
+    req->data = data;
 
-  CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(args.This());
-  if (args.Length() != 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
-    ThrowException(Exception::TypeError(String::New("Invalid arguments")));
-    return scope.Close(Undefined());
-  }
-
-  uv_work_t* req = new uv_work_t;
-  OpenAsyncData* data = new OpenAsyncData;
-  data->port = std::string(*String::Utf8Value(args[0]));
-  data->cec_adapter = static_cast<CEC::ICECAdapter*>(CECInitialise(obj->configuration));
-  data->callback = Persistent<Function>::New(Local<Function>::Cast(args[1]));
-  req->data = data;
-
-  uv_queue_work(
-    uv_default_loop(),
-    req,
-    OpenAsync,
-    (uv_after_work_cb)OpenAsyncAfter);
-
-  return scope.Close(Undefined());
+    uv_queue_work(
+        uv_default_loop(),
+        req,
+        OpenAsync,
+        (uv_after_work_cb)OpenAsyncAfter);
+    
+    info.GetReturnValue().SetUndefined();
 }
 
 void CECWrap::OpenAsync(uv_work_t *req) {
@@ -113,11 +149,11 @@ void CECWrap::OpenAsyncAfter(uv_work_t *req) {
   delete data;
   delete req;
 }
-
-Handle<Value> CECWrap::DetectAdapters(const Arguments& args) {
+/*
+v8::Handle<v8::Value> CECWrap::DetectAdapters(const Nan::FunctionCallbackInfo<v8::Value> &args) {
   HandleScope scope;
 
-  CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(args.This());
+  CECWrap* obj = Nan::ObjectWrap::Unwrap<CECWrap>(args.This());
   int alloc_devices = 10;
   CEC::cec_adapter_descriptor* deviceList = new CEC::cec_adapter_descriptor[alloc_devices];
   int8_t device_count = obj->cec_adapter->DetectAdapters(deviceList, sizeof(CEC::cec_adapter_descriptor) * alloc_devices);
@@ -157,24 +193,65 @@ Handle<Value> CECWrap::DetectAdapters(const Arguments& args) {
   delete[] deviceList;
   return scope.Close(ret);
 }
-
-Handle<Value> CECWrap::GetClientVersion(Local<String> property, const AccessorInfo& info) {
-  HandleScope scope;
-
-  CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(info.This());
-  return scope.Close(Number::New(obj->configuration->clientVersion));
+*/
+NAN_METHOD(CECWrap::DetectAdapters) {
+    HandleScope scope;
+    
+    CECWrap* obj = Nan::ObjectWrap::Unwrap<CECWrap>(info.This());
+    int alloc_devices = 10;
+    CEC::cec_adapter_descriptor* deviceList = new CEC::cec_adapter_descriptor[alloc_devices];
+    int8_t device_count = obj->cec_adapter->DetectAdapters(deviceList, sizeof(CEC::cec_adapter_descriptor) * alloc_devices);
+    if (device_count == -1) {
+        delete[] deviceList;
+        ThrowException(Exception::Error(String::New("DetectAdapters CEC Error")));
+        info.GetReturnValue().SetUndefined();
+        return;
+    }
+    if (device_count > alloc_devices) {
+        delete[] deviceList;
+        alloc_devices = device_count;
+        deviceList = new CEC::cec_adapter_descriptor[alloc_devices];
+        int8_t device_count = obj->cec_adapter->DetectAdapters(deviceList, sizeof(CEC::cec_adapter_descriptor) * alloc_devices);
+        if (device_count == -1) {
+            delete[] deviceList;
+            ThrowException(Exception::Error(String::New("DetectAdapters CEC Error")));
+            info.GetReturnValue().SetUndefined();
+            return;
+        }
+    }
+    
+    Local<Array> ret = Array::New(device_count);
+    for(int8_t i = 0; i < device_count; i++) {
+        Local<Object> device = Object::New();
+        device->Set(String::NewSymbol("portPath"), String::New(deviceList[i].strComPath));
+        device->Set(String::NewSymbol("portName"), String::New(deviceList[i].strComName));
+        device->Set(String::NewSymbol("vendorId"), Number::New(deviceList[i].iVendorId));
+        device->Set(String::NewSymbol("productId"), Number::New(deviceList[i].iProductId));
+        device->Set(String::NewSymbol("firmwareVersion"), Number::New(deviceList[i].iFirmwareVersion));
+        device->Set(String::NewSymbol("physicalAddress"), Number::New(deviceList[i].iPhysicalAddress));
+        if (deviceList[i].iFirmwareBuildDate != CEC_FW_BUILD_UNKNOWN) {
+            device->Set(String::NewSymbol("firmwareBuildDate"), Date::New(deviceList[i].iFirmwareBuildDate));
+        }
+        device->Set(String::NewSymbol("adapterType"), String::New(obj->cec_adapter->ToString(deviceList[i].adapterType)));
+        ret->Set(i, device);
+    }
+    
+    delete[] deviceList;
+    scope.Close(ret);
+    return;
 }
 
-Handle<Value> CECWrap::GetServerVersion(Local<String> property, const AccessorInfo& info) {
-  HandleScope scope;
-
+NAN_GETTER(CECWrap::GetClientVersion) {
   CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(info.This());
-  return scope.Close(Number::New(obj->configuration->serverVersion));
+  info.GetReturnValue().Set(obj->configuration->clientVersion);
 }
 
-Handle<Value> CECWrap::GetFirmwareVersion(Local<String> property, const AccessorInfo& info) {
-  HandleScope scope;
-
+NAN_GETTER(CECWrap::GetServerVersion) {
   CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(info.This());
-  return scope.Close(Number::New(obj->configuration->iFirmwareVersion));
+  info.GetReturnValue().Set(obj->configuration->serverVersion);
+}
+
+NAN_GETTER(CECWrap::GetFirmwareVersion) {
+  CECWrap* obj = ObjectWrap::Unwrap<CECWrap>(info.This());
+  info.GetReturnValue().Set(obj->configuration->iFirmwareVersion);
 }
